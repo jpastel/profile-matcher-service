@@ -1,0 +1,25 @@
+version: '3'
+services:
+  profile-matcher-service:
+    container_name: profile-matcher-service
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: profile-matcher-service:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    links:
+      - db
+  db:
+    container_name: mongodb
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=@dm1N
+      - MONGO_INITDB_DATABASE=playerprofile
+    volumes:
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
