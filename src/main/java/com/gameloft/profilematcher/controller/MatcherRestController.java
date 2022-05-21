@@ -7,8 +7,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
-
 @RestController
 public class MatcherRestController {
 
@@ -19,7 +17,7 @@ public class MatcherRestController {
     }
 
     @GetMapping("/get_client_config/{player_id}")
-    public ResponseEntity<PlayerProfile> getMatchingProfile(@PathVariable("player_id") UUID playerProfileID) {
+    public ResponseEntity<PlayerProfile> getMatchingProfile(@PathVariable("player_id") String playerProfileID) {
         PlayerProfile profile = matcherService.returnPlayerWithCampaignIfMatch(playerProfileID);
 
         if (profile != null) {

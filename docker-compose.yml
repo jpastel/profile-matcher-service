@@ -20,6 +20,6 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=@dm1N
-      - MONGO_INITDB_DATABASE=playerprofile
+      - MONGO_INITDB_DATABASE=player
     volumes:
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro

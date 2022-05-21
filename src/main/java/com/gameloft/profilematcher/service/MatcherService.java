@@ -5,8 +5,6 @@ import com.gameloft.profilematcher.data.entities.PlayerProfile;
 import com.gameloft.profilematcher.data.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
-
 @Service
 public class MatcherService {
 
@@ -18,12 +16,13 @@ public class MatcherService {
         this.campaignClient = campaignClient;
     }
 
-    public PlayerProfile returnPlayerWithCampaignIfMatch(UUID playerID) {
+    public PlayerProfile returnPlayerWithCampaignIfMatch(String playerID) {
         var currentCampaign = campaignClient.getCurrentCampaign();
         var playerProfile = userRepository.returnProfileIfMatchingCampaign(playerID, currentCampaign.matchers());
 
         if (playerProfile != null) {
-            return null;
+            PlayerProfile profileWithCampaign = playerProfile.withCampaign(currentCampaign);
+            return userRepository.save(profileWithCampaign);
         }
 
         return null;

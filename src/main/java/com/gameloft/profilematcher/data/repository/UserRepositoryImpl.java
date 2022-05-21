@@ -7,10 +7,9 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
-import java.util.HashMap;
-import java.util.UUID;
+import java.util.*;
 
-public class UserRepositoryImpl implements CustomUserRepository<PlayerProfile, UUID> {
+public class UserRepositoryImpl implements CustomUserRepository<PlayerProfile, String> {
 
     private final MongoTemplate mongoTemplate;
 
@@ -20,7 +19,7 @@ public class UserRepositoryImpl implements CustomUserRepository<PlayerProfile, U
     }
 
     @Override
-    public PlayerProfile returnProfileIfMatchingCampaign(UUID uuid, CampaignMatcher matcher) {
+    public PlayerProfile returnProfileIfMatchingCampaign(String playerId, CampaignMatcher matcher) {
         var level = matcher.level();
         var has = matcher.has();
         var does_not_have = matcher.does_not_have();
@@ -28,7 +27,7 @@ public class UserRepositoryImpl implements CustomUserRepository<PlayerProfile, U
         var query = new Query();
 
         //player id
-        query.addCriteria(Criteria.where("player_id").is(uuid));
+        query.addCriteria(Criteria.where("player_id").is(playerId));
 
         //player level
         query.addCriteria(Criteria
@@ -36,41 +35,46 @@ public class UserRepositoryImpl implements CustomUserRepository<PlayerProfile, U
                 .gte(level.min())
                 .lte(level.max()));
 
-        var criteriaMap = new HashMap<String, Criteria>();
+        var criterias = new HashMap<String, List<Criteria>>();
 
-        //has fields
-        for (var entry : has.entrySet()) {
-            var fieldName = entry.getKey();
-            var values = entry.getValue();
+        //has and does_not_have fields
+        parseMatcherFieldPossession(has, false, criterias);
+        parseMatcherFieldPossession(does_not_have, true, criterias);
 
-            if (!criteriaMap.containsKey(fieldName)) {
-                criteriaMap.put(fieldName, Criteria.where(toPlayerProfileField(fieldName)).in(values));
-            } else {
-                criteriaMap.get(fieldName).in(values);
-            }
-        }
-
-        //does_not_have fields
-        for (var entry : does_not_have.entrySet()) {
-            var fieldName = entry.getKey();
-            var values = entry.getValue();
-
-            if (!criteriaMap.containsKey(fieldName)) {
-                criteriaMap.put(fieldName, Criteria.where(toPlayerProfileField(fieldName)).nin(values));
-            } else {
-                criteriaMap.get(fieldName).nin(values);
-            }
-        }
-
-        criteriaMap.values().forEach(query::addCriteria);
+        criterias.values().forEach(listCrit -> listCrit.forEach(query::addCriteria));
 
         return mongoTemplate.findOne(query, PlayerProfile.class);
     }
 
-    private String toPlayerProfileField(String name) {
-        if ("items".equalsIgnoreCase(name)) {
-            return "inventory";
+    private void parseMatcherFieldPossession(Map<String, List<String>> possession, boolean not, Map<String, List<Criteria>> criterias) {
+        for (var entry : possession.entrySet()) {
+            var fieldName = entry.getKey();
+            var values = entry.getValue();
+
+            if (!criterias.containsKey(fieldName)) {
+                criterias.put(fieldName, criteriaFromField(fieldName, values, null, not));
+            } else {
+                List<Criteria> listCriteria = criterias.get(fieldName);
+                criteriaFromField(fieldName, values, listCriteria, not);
+            }
         }
-        return name;
+    }
+
+    private List<Criteria> criteriaFromField(String fieldName, List<String> values, List<Criteria> criterias, boolean not) {
+        List<Criteria> criteriaList;
+
+        if ("items".equalsIgnoreCase(fieldName)) {
+            criteriaList = criterias == null ? new ArrayList<>() : criterias;
+            values.forEach(value -> criteriaList.add(Criteria.where(String.format("inventory.%s", value)).exists(!not)));
+        } else {
+            criteriaList = criterias == null ? new ArrayList<>(List.of(Criteria.where(fieldName))) : criterias;
+            Criteria criteria = criteriaList.get(0);
+            if (not) {
+                criteria.nin(values);
+            } else {
+                criteria.in(values);
+            }
+        }
+        return criteriaList;
     }
 }
